@@ -1,0 +1,152 @@
+*notepad.nvim.txt*  File manager and link-tree visualizer for markdown notes
+
+Author:   mitchell.jenkins
+License:  MIT
+
+==============================================================================
+CONTENTS                                                    *notepad-contents*
+
+  1. Introduction .......................... |notepad-introduction|
+  2. Setup ................................. |notepad-setup|
+  3. Configuration ......................... |notepad-config|
+  4. Commands .............................. |notepad-commands|
+  5. Keymaps ............................... |notepad-keymaps|
+  6. Highlights ............................ |notepad-highlights|
+
+==============================================================================
+1. INTRODUCTION                                         *notepad-introduction*
+
+notepad.nvim is a lightweight floating-window file manager and markdown
+link-tree visualizer. It operates inside a single configurable float and
+requires no external dependencies beyond Neovim 0.9+.
+
+Two modes:
+
+  Browser   Navigate directories, open/create/rename/delete files.
+  Tree      Parse [text](link) relationships across all .md files in a
+            directory and render the directed graph as an ASCII tree.
+
+==============================================================================
+2. SETUP                                                    *notepad-setup*
+
+The plugin auto-registers |:Notepad| and |:NotepadTree| on load. For
+highlights and keymaps call setup() in your config: >lua
+
+  require("notepad").setup({
+    notes_dir  = "~/notes",
+    extension  = ".md",
+    width_pct  = 0.5,
+    height_pct = 0.5,
+    border     = "rounded",
+  })
+<
+setup() is idempotent — calling it more than once re-applies options and
+re-registers highlights.
+
+==============================================================================
+3. CONFIGURATION                                            *notepad-config*
+
+All keys are optional; unset keys fall back to the defaults below.
+
+  notes_dir   (string)   Default directory for |:Notepad| and |:NotepadTree|.
+                         Supports `~` expansion.  Created automatically if it
+                         does not exist.
+                         Default: `"~/notes"`
+
+  extension   (string)   Extension appended when creating a new entry that has
+                         no extension.
+                         Default: `".md"`
+
+  width_pct   (number)   Floating window width as a fraction of editor width.
+                         Default: `0.5`
+
+  height_pct  (number)   Floating window height as a fraction of editor height.
+                         Default: `0.5`
+
+  border      (string)   Border style passed to |nvim_open_win()|.
+                         Accepted values: `"rounded"`, `"single"`, `"double"`,
+                         `"solid"`, `"shadow"`, `"none"`.
+                         Default: `"rounded"`
+
+==============================================================================
+4. COMMANDS                                                *notepad-commands*
+
+                                                                   *:Notepad*
+:Notepad [path]
+    Open a floating browser window for [path].  If [path] is omitted the
+    configured `notes_dir` is used.  The directory is created automatically
+    if it does not exist.  Calling the command while the float is already
+    open focuses it instead of opening a second window.
+
+                                                               *:NotepadTree*
+:NotepadTree [path]
+    Open a floating link-tree window for [path].  Parses all `*.md` files
+    recursively, resolves `[text](target.md)` links, and renders the
+    resulting directed graph.  Image links (`![alt](url)`) are ignored.
+    Cycles are detected and annotated with `(cycle)`.  If [path] is omitted
+    the configured `notes_dir` is used.
+
+==============================================================================
+5. KEYMAPS                                                  *notepad-keymaps*
+
+Default global keymaps (registered by |notepad-setup|):
+
+  <leader>np    Open notepad browser (|:Notepad| with no arguments).
+  <leader>nt    Open notepad tree   (|:NotepadTree| with no arguments).
+
+------------------------------------------------------------------------------
+Browser keymaps~
+
+These are buffer-local and active whenever the browser scratch buffer is
+displayed in the float.
+
+  <CR>    Open the entry under the cursor.  For directories, navigates into
+          them.  For files, opens the file in the float.
+  <BS>    Navigate to the parent directory.  Stops at `notes_dir`.
+  n       Prompt for a name and create a new entry.  A trailing `/` creates
+          a directory.  Names without an extension receive `config.extension`.
+  d       Prompt for confirmation, then delete the entry under the cursor.
+          Directories are removed recursively.
+  r       Prompt for a new name and rename the entry under the cursor.
+  R       Refresh the directory listing.
+  q       Close the float.
+  i / o   Aliases for <CR>.
+
+------------------------------------------------------------------------------
+Tree keymaps~
+
+These are buffer-local and active on the tree scratch buffer.
+
+  <CR>    Open the file on the current line in the float.
+  q       Close the float.
+
+When a file is opened inside either float the buffer-local `q` is
+re-applied automatically so the float can always be closed.
+
+==============================================================================
+6. HIGHLIGHTS                                            *notepad-highlights*
+
+All highlight groups are defined with `default = true` so they can be
+overridden in your colorscheme or config.
+
+  *NotepadDirectory*     Directories in the browser listing.
+                         Default: links to |hl-Directory|.
+
+  *NotepadFile*          Regular files in the browser listing.
+                         Default: links to |hl-Normal|.
+
+  *NotepadMarker*        The `▸` / `·` prefix glyph on each listing line.
+                         Default: links to |hl-Comment|.
+
+  *NotepadTreeConnector* The `│ ├── └──` connector characters in the tree.
+                         Default: links to |hl-Comment|.
+
+  *NotepadCycle*         The `(cycle)` annotation on cyclic links.
+                         Default: links to |hl-WarningMsg|.
+
+Example override: >lua
+
+  vim.api.nvim_set_hl(0, "NotepadDirectory", { fg = "#89b4fa", bold = true })
+<
+==============================================================================
+vim:tw=78:ts=2:ft=help:norl:
