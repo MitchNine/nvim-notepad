@@ -112,7 +112,7 @@ displayed in the float.
    q       Close the float.
    i / o   Aliases for <CR>.
    P       Git pull the repository (notes_dir must be a git repo).
-   c       Stage all changes, prompt for a commit message, and commit.
+   c       Stage all changes and commit with an auto-generated timestamp message.
    p       Stage all changes, auto-commit with a timestamp message, and push.
 
 ------------------------------------------------------------------------------

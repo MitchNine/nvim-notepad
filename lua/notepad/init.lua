@@ -261,17 +261,15 @@ local function git_commit()
     vim.notify("Not a git repository", vim.log.levels.WARN)
     return
   end
-  vim.ui.input({ prompt = "Commit message: " }, function(msg)
-    if not msg or msg == "" then return end
-    vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " add -A")
-    local result = vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " commit -m " .. vim.fn.shellescape(msg) .. " 2>&1")
-    if vim.v.shell_error ~= 0 then
-      vim.notify(result:gsub("%s+$", ""), vim.log.levels.WARN)
-    else
-      vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
-    end
-    render(dir)
-  end)
+  local msg = "Update " .. os.date("%Y-%m-%d %H:%M:%S")
+  vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " add -A")
+  local result = vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " commit -m " .. vim.fn.shellescape(msg) .. " 2>&1")
+  if vim.v.shell_error ~= 0 then
+    vim.notify(result:gsub("%s+$", ""), vim.log.levels.WARN)
+  else
+    vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
+  end
+  render(dir)
 end
 
 local function git_push()
