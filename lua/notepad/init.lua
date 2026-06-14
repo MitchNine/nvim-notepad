@@ -251,6 +251,7 @@ local function git_pull()
   vim.notify("Running git pull...", vim.log.levels.INFO)
   local result = vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " pull 2>&1")
   vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
+  render(dir)
 end
 
 local function git_commit()
@@ -269,6 +270,7 @@ local function git_commit()
     else
       vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
     end
+    render(dir)
   end)
 end
 
@@ -289,6 +291,7 @@ local function git_push()
   else
     vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
   end
+  render(dir)
 end
 
 local function setup_buffer()
