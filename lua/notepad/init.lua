@@ -51,6 +51,7 @@ local function list_entries(dir)
   while true do
     local name, ftype = uv.fs_scandir_next(handle)
     if not name then break end
+    if name:sub(1, 1) == "." then goto continue end
     -- fs_scandir_next returns "link" for symlinks and "unknown" on some FSes.
     -- Fall back to fs_stat (which follows symlinks) for both cases.
     if ftype == "link" or ftype == "unknown" then
@@ -60,9 +61,10 @@ local function list_entries(dir)
     local full = dir .. "/" .. name
     if ftype == "directory" then
       table.insert(dirs, { name = name, path = full, kind = "dir" })
-    elseif ftype == "file" then
+    else    if ftype == "file" then
       table.insert(files, { name = name, path = full, kind = "file" })
     end
+    ::continue::
   end
 
   table.sort(dirs,  function(a, b) return a.name < b.name end)
@@ -213,6 +215,61 @@ local function rename_entry()
   end)
 end
 
+local function is_git_repo(dir)
+  local git_dir = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --show-toplevel 2>/dev/null")
+  return #git_dir > 0 and git_dir[1] ~= ""
+end
+
+local function git_pull()
+  local dir = state.path
+  if not dir then return end
+  if not is_git_repo(dir) then
+    vim.notify("Not a git repository", vim.log.levels.WARN)
+    return
+  end
+  vim.notify("Running git pull...", vim.log.levels.INFO)
+  local result = vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " pull 2>&1")
+  vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
+end
+
+local function git_commit()
+  local dir = state.path
+  if not dir then return end
+  if not is_git_repo(dir) then
+    vim.notify("Not a git repository", vim.log.levels.WARN)
+    return
+  end
+  vim.ui.input({ prompt = "Commit message: " }, function(msg)
+    if not msg or msg == "" then return end
+    vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " add -A")
+    local result = vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " commit -m " .. vim.fn.shellescape(msg) .. " 2>&1")
+    if vim.v.shell_error ~= 0 then
+      vim.notify(result:gsub("%s+$", ""), vim.log.levels.WARN)
+    else
+      vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
+    end
+  end)
+end
+
+local function git_push()
+  local dir = state.path
+  if not dir then return end
+  if not is_git_repo(dir) then
+    vim.notify("Not a git repository", vim.log.levels.WARN)
+    return
+  end
+  vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " add -A")
+  local auto_msg = "Auto-sync: " .. os.date("%Y-%m-%d %H:%M:%S")
+  vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " commit -m " .. vim.fn.shellescape(auto_msg) .. " 2>/dev/null")
+  vim.notify("Running git push...", vim.log.levels.INFO)
+  local result = vim.fn.system("git -C " .. vim.fn.shellescape(dir) .. " push 2>&1")
+  if vim.v.shell_error ~= 0 then
+    vim.notify(result:gsub("%s+$", ""), vim.log.levels.WARN)
+  else
+    vim.notify(result:gsub("%s+$", ""), vim.log.levels.INFO)
+  end
+end
+
 local function setup_buffer()
   local buf = vim.api.nvim_create_buf(false, true)
   state.bufnr = buf
@@ -232,13 +289,16 @@ local function setup_buffer()
 
   map("n", "<CR>", open_entry,   "Open entry")
   map("n", "<BS>", go_up,        "Go up")
-  map("n", "n",    new_entry,    "New entry")
+  map("n", "a",    new_entry,    "New entry")
   map("n", "d",    delete_entry, "Delete entry")
   map("n", "r",    rename_entry, "Rename entry")
   map("n", "q",    close,        "Close notepad")
   map("n", "R",    function() render(state.path) end, "Refresh")
   map("n", "i",    open_entry,   "Open entry")
   map("n", "o",    open_entry,   "Open entry")
+  map("n", "P",    git_pull,     "Git pull")
+  map("n", "c",    git_commit,   "Git commit")
+  map("n", "p",    git_push,     "Git push")
 
   return buf
 end

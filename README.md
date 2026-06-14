@@ -27,6 +27,9 @@ A scratch-buffer file manager and link-tree visualizer for markdown notes.
 | `r` | Rename entry |
 | `R` | Refresh listing |
 | `q` | Close window |
+| `P` | Git pull |
+| `c` | Stage all and commit (prompts for message) |
+| `p` | Stage all, auto-commit, and push |
 
 ## NotepadTree keymaps
 

@@ -100,17 +100,20 @@ Browser keymaps~
 These are buffer-local and active whenever the browser scratch buffer is
 displayed in the float.
 
-  <CR>    Open the entry under the cursor.  For directories, navigates into
-          them.  For files, opens the file in the float.
-  <BS>    Navigate to the parent directory.  Stops at `notes_dir`.
-  n       Prompt for a name and create a new entry.  A trailing `/` creates
-          a directory.  Names without an extension receive `config.extension`.
-  d       Prompt for confirmation, then delete the entry under the cursor.
-          Directories are removed recursively.
-  r       Prompt for a new name and rename the entry under the cursor.
-  R       Refresh the directory listing.
-  q       Close the float.
-  i / o   Aliases for <CR>.
+   <CR>    Open the entry under the cursor.  For directories, navigates into
+           them.  For files, opens the file in the float.
+   <BS>    Navigate to the parent directory.  Stops at `notes_dir`.
+   n       Prompt for a name and create a new entry.  A trailing `/` creates
+           a directory.  Names without an extension receive `config.extension`.
+   d       Prompt for confirmation, then delete the entry under the cursor.
+           Directories are removed recursively.
+   r       Prompt for a new name and rename the entry under the cursor.
+   R       Refresh the directory listing.
+   q       Close the float.
+   i / o   Aliases for <CR>.
+   P       Git pull the repository (notes_dir must be a git repo).
+   c       Stage all changes, prompt for a commit message, and commit.
+   p       Stage all changes, auto-commit with a timestamp message, and push.
 
 ------------------------------------------------------------------------------
 Tree keymaps~
