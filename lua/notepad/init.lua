@@ -78,6 +78,9 @@ end
 
 local ns = vim.api.nvim_create_namespace("notepad")
 
+-- Forward declaration so functions defined before render() can call it.
+local render
+
 local function apply_list_highlights(buf, entries)
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
   for i, e in ipairs(entries) do
@@ -109,11 +112,12 @@ local function open_entry()
     vim.fn.bufload(file_buf)
     vim.api.nvim_win_set_buf(winid, file_buf)
     pcall(vim.api.nvim_win_set_config, winid, { title = " " .. vim.fn.fnamemodify(entry.path, ":.") .. " " })
-    vim.api.nvim_win_set_cursor(winid, { 1, 0 })
+    pcall(vim.api.nvim_win_set_cursor, winid, { 1, 0 })
   end
 end
 
 local function go_up()
+  if not state.path then return end
   local root = vim.fn.expand(state.config.notes_dir):gsub("/+$", "")
   local parent = vim.fn.fnamemodify(state.path, ":h")
   local within_root = parent == root or parent:sub(1, #root + 1) == root .. "/"
@@ -123,13 +127,20 @@ local function go_up()
 end
 
 local function new_entry()
+  local current_path = state.path
+  if not current_path then return end
   vim.ui.input({ prompt = "Entry name: " }, function(name)
     if not name or name == "" then return end
-    local full = state.path .. "/" .. name
+    -- Window may have been closed while the prompt was open.
+    if not (state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr)) then return end
+    local full = current_path .. "/" .. name
     local is_dir = name:match("/$")
     if is_dir then
       full = full:sub(1, -2)
-      vim.fn.mkdir(full, "p")
+      if vim.fn.mkdir(full, "p") == 0 then
+        vim.notify("Failed to create directory: " .. full, vim.log.levels.ERROR)
+        return
+      end
     else
       if not name:match("%.%w+$") then
         full = full .. state.config.extension
@@ -139,7 +150,7 @@ local function new_entry()
         return
       end
     end
-    render(state.path)   -- re-populates state.entries
+    render(current_path)   -- re-populates state.entries
     -- Place cursor on the newly created entry
     if not (state.winid and vim.api.nvim_win_is_valid(state.winid)) then return end
     local target = vim.fn.fnamemodify(full, ":t")
@@ -175,15 +186,19 @@ end
 local function rename_entry()
   local entry = entry_at_cursor()
   if not entry then return end
+  local current_path = state.path
+  if not current_path then return end
   vim.ui.input({ prompt = "New name: ", default = entry.name }, function(name)
     if not name or name == "" then return end
-    local new_path = state.path .. "/" .. name
+    -- Window may have been closed while the prompt was open.
+    if not (state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr)) then return end
+    local new_path = current_path .. "/" .. name
     local result = vim.fn.rename(entry.path, new_path)
     if result ~= 0 then
       vim.notify("Rename failed: " .. entry.path, vim.log.levels.ERROR)
       return
     end
-    render(state.path)
+    render(current_path)
   end)
 end
 
@@ -192,9 +207,11 @@ local function is_git_repo(dir)
   return #git_dir > 0 and git_dir[1] ~= ""
 end
 
-local function render(dir)
-
+render = function(dir)
   if not (state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr)) then
+    return
+  end
+  if not (state.winid and vim.api.nvim_win_is_valid(state.winid)) then
     return
   end
   state.path = dir
@@ -233,12 +250,16 @@ local function render(dir)
 
   local buf = state.bufnr
   vim.bo[buf].modifiable = true
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  local ok, err = pcall(vim.api.nvim_buf_set_lines, buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
+  if not ok then
+    vim.notify("notepad: failed to update buffer: " .. tostring(err), vim.log.levels.ERROR)
+    return
+  end
   pcall(vim.api.nvim_buf_set_name, buf, "notepad://" .. dir)
   pcall(vim.api.nvim_win_set_cursor, state.winid, { 1, 0 })
   apply_list_highlights(buf, entries)
-  vim.api.nvim_win_set_config(state.winid, { title = title, footer = footer })
+  pcall(vim.api.nvim_win_set_config, state.winid, { title = title, footer = footer })
 end
 
 local function git_pull()
@@ -372,7 +393,7 @@ function M.open(dir)
       vim.api.nvim_win_set_buf(state.winid, new_buf)
       render(vim.fn.expand(browse_dir))
     else
-      render(dir or state.path)
+      render(dir and vim.fn.expand(dir) or state.path)
     end
     return
   end
@@ -385,8 +406,8 @@ function M.open(dir)
   local buf = setup_buffer()
 
   local editor_w, editor_h = get_editor_size()
-  local float_w = math.floor(editor_w * state.config.width_pct)
-  local float_h = math.floor(editor_h * state.config.height_pct)
+  local float_w = math.max(1, math.floor(editor_w * state.config.width_pct))
+  local float_h = math.max(1, math.floor(editor_h * state.config.height_pct))
 
   state.winid = vim.api.nvim_open_win(buf, true, {
     relative = "editor",
@@ -413,8 +434,8 @@ end
 
 local function open_float_win(buf, title, lines)
   local editor_w, editor_h = get_editor_size()
-  local float_w = math.floor(editor_w * state.config.width_pct)
-  local float_h = math.min(#lines + 2, math.floor(editor_h * state.config.height_pct))
+  local float_w = math.max(1, math.floor(editor_w * state.config.width_pct))
+  local float_h = math.max(1, math.min(#lines + 2, math.floor(editor_h * state.config.height_pct)))
 
   -- Set lines before opening to avoid flash of empty content
   vim.bo[buf].modifiable = true
@@ -440,14 +461,12 @@ local function build_link_graph(dir)
   local files = vim.fn.globpath(dir, "**/*.md", false, true)
 
   local outgoing = {}
-  local incoming = {}
   local all = {}
 
   for _, fp in ipairs(files) do
     local norm = vim.fn.resolve(fp)
     all[norm] = true
     outgoing[norm] = {}
-    incoming[norm] = {}
   end
 
   for _, fp in ipairs(files) do
@@ -463,15 +482,23 @@ local function build_link_graph(dir)
       if all[resolved] and not seen[resolved] then
         seen[resolved] = true
         table.insert(outgoing[norm], { target = resolved, text = text })
-        table.insert(incoming[resolved], norm)
       end
+    end
+  end
+
+  -- Find roots: nodes with no incoming edges
+  local has_incoming = {}
+  for _, fp in ipairs(files) do
+    local norm = vim.fn.resolve(fp)
+    for _, child in ipairs(outgoing[norm]) do
+      has_incoming[child.target] = true
     end
   end
 
   local roots = {}
   for _, fp in ipairs(files) do
     local norm = vim.fn.resolve(fp)
-    if #incoming[norm] == 0 then
+    if not has_incoming[norm] then
       table.insert(roots, norm)
     end
   end
