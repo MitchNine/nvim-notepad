@@ -22,7 +22,7 @@ A scratch-buffer file manager and link-tree visualizer for markdown notes.
 |-----|--------|
 | `<CR>` | Open file / enter directory |
 | `<BS>` | Go up to parent directory |
-| `n` | Create a new entry (appends `.md` if no extension) |
+| `a` | Create a new entry (appends `.md` if no extension) |
 | `d` | Delete entry (with confirmation) |
 | `r` | Rename entry |
 | `R` | Refresh listing |
@@ -30,6 +30,8 @@ A scratch-buffer file manager and link-tree visualizer for markdown notes.
 | `P` | Git pull |
 | `c` | Stage all and commit (auto-generated message) |
 | `p` | Stage all, auto-commit, and push |
+
+Hidden files (starting with `.`) are excluded from the listing. When browsing inside a git repository, the window title shows the branch name and the footer shows ahead/behind counts. After running `P`, `c`, or `p`, the display refreshes automatically.
 
 ## NotepadTree keymaps
 

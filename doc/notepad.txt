@@ -103,7 +103,7 @@ displayed in the float.
    <CR>    Open the entry under the cursor.  For directories, navigates into
            them.  For files, opens the file in the float.
    <BS>    Navigate to the parent directory.  Stops at `notes_dir`.
-   n       Prompt for a name and create a new entry.  A trailing `/` creates
+   a       Prompt for a name and create a new entry.  A trailing `/` creates
            a directory.  Names without an extension receive `config.extension`.
    d       Prompt for confirmation, then delete the entry under the cursor.
            Directories are removed recursively.
@@ -114,6 +114,11 @@ displayed in the float.
    P       Git pull the repository (notes_dir must be a git repo).
    c       Stage all changes and commit with an auto-generated timestamp message.
    p       Stage all changes, auto-commit with a timestamp message, and push.
+
+Hidden files (names starting with `.`) are not shown in the listing. When the
+browser is inside a git repository the window title displays the branch name
+and the footer shows remote ahead/behind information.  The listing and git
+status refresh automatically after |P|, |c| or |p|.
 
 ------------------------------------------------------------------------------
 Tree keymaps~
