@@ -212,12 +212,12 @@ local function render(dir)
   end
 
   local title = " " .. dir .. " "
-  local git_info = ""
-  local branch = ""
+  local status_line = ""
   if is_git_repo(dir) then
-    branch = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --abbrev-ref HEAD 2>/dev/null")[1]
+    local branch = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --abbrev-ref HEAD 2>/dev/null")[1]
     if branch and branch ~= "" then
       title = " " .. dir .. " (" .. branch .. ") "
+      status_line = "── " .. branch
       local ab = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-list --count --left-right @{upstream}...HEAD 2>/dev/null")[1]
       if ab then
         local behind, ahead = ab:match("^(%d+)%s+(%d+)$")
@@ -225,14 +225,14 @@ local function render(dir)
           local parts = {}
           if tonumber(ahead) > 0 then table.insert(parts, "↑" .. ahead) end
           if tonumber(behind) > 0 then table.insert(parts, "↓" .. behind) end
-          if #parts > 0 then git_info = "│ " .. table.concat(parts, " ") end
+          if #parts > 0 then status_line = status_line .. " │ " .. table.concat(parts, " ") end
         end
       end
     end
   end
-  if git_info ~= "" then
+  if status_line ~= "" then
     table.insert(lines, "")
-    table.insert(lines, "── " .. branch .. " " .. git_info)
+    table.insert(lines, status_line)
   end
 
   local buf = state.bufnr
