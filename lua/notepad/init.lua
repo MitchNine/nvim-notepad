@@ -51,7 +51,7 @@ local function list_entries(dir)
   while true do
     local name, ftype = uv.fs_scandir_next(handle)
     if not name then break end
-    if name:sub(1, 1) == "." then goto continue end
+    if name:sub(1, 1) ~= "." then
     -- fs_scandir_next returns "link" for symlinks and "unknown" on some FSes.
     -- Fall back to fs_stat (which follows symlinks) for both cases.
     if ftype == "link" or ftype == "unknown" then
@@ -61,10 +61,10 @@ local function list_entries(dir)
     local full = dir .. "/" .. name
     if ftype == "directory" then
       table.insert(dirs, { name = name, path = full, kind = "dir" })
-    else    if ftype == "file" then
+    elseif ftype == "file" then
       table.insert(files, { name = name, path = full, kind = "file" })
     end
-    ::continue::
+    end
   end
 
   table.sort(dirs,  function(a, b) return a.name < b.name end)
