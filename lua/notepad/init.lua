@@ -87,53 +87,6 @@ local function apply_list_highlights(buf, entries)
   end
 end
 
-local function render(dir)
-  if not (state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr)) then
-    return
-  end
-  state.path = dir
-
-  local entries = list_entries(dir)
-  state.entries = entries          -- cache so entry_at_cursor avoids re-reading disk
-
-  local lines = {}
-  for _, e in ipairs(entries) do
-    if e.kind == "dir" then
-      table.insert(lines, " ▸ " .. e.name .. "/")
-    else
-      table.insert(lines, " · " .. e.name)
-    end
-  end
-
-  local buf = state.bufnr
-  vim.bo[buf].modifiable = true
-  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
-  vim.bo[buf].modifiable = false
-  pcall(vim.api.nvim_buf_set_name, buf, "notepad://" .. dir)
-  pcall(vim.api.nvim_win_set_cursor, state.winid, { 1, 0 })
-  apply_list_highlights(buf, entries)
-
-  local title = " " .. dir .. " "
-  local footer = ""
-  if is_git_repo(dir) then
-    local branch = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --abbrev-ref HEAD 2>/dev/null")[1]
-    if branch and branch ~= "" then
-      title = " " .. dir .. " (" .. branch .. ") "
-      local ab = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-list --count --left-right @{upstream}...HEAD 2>/dev/null")[1]
-      if ab then
-        local behind, ahead = ab:match("^(%d+)%s+(%d+)$")
-        if behind and ahead then
-          local parts = {}
-          if tonumber(ahead) > 0 then table.insert(parts, "↑" .. ahead) end
-          if tonumber(behind) > 0 then table.insert(parts, "↓" .. behind) end
-          if #parts > 0 then footer = " " .. table.concat(parts, " ") .. " " end
-        end
-      end
-    end
-  end
-  pcall(vim.api.nvim_win_set_config, state.winid, { title = title, footer = footer })
-end
-
 -- Uses state.entries (populated by render) so no disk read is needed.
 local function entry_at_cursor()
   local buf = state.bufnr
@@ -237,6 +190,54 @@ end
 local function is_git_repo(dir)
   local git_dir = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --show-toplevel 2>/dev/null")
   return #git_dir > 0 and git_dir[1] ~= ""
+end
+
+local function render(dir)
+
+  if not (state.bufnr and vim.api.nvim_buf_is_valid(state.bufnr)) then
+    return
+  end
+  state.path = dir
+
+  local entries = list_entries(dir)
+  state.entries = entries          -- cache so entry_at_cursor avoids re-reading disk
+
+  local lines = {}
+  for _, e in ipairs(entries) do
+    if e.kind == "dir" then
+      table.insert(lines, " ▸ " .. e.name .. "/")
+    else
+      table.insert(lines, " · " .. e.name)
+    end
+  end
+
+  local buf = state.bufnr
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].modifiable = false
+  pcall(vim.api.nvim_buf_set_name, buf, "notepad://" .. dir)
+  pcall(vim.api.nvim_win_set_cursor, state.winid, { 1, 0 })
+  apply_list_highlights(buf, entries)
+
+  local title = " " .. dir .. " "
+  local footer = ""
+  if is_git_repo(dir) then
+    local branch = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --abbrev-ref HEAD 2>/dev/null")[1]
+    if branch and branch ~= "" then
+      title = " " .. dir .. " (" .. branch .. ") "
+      local ab = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-list --count --left-right @{upstream}...HEAD 2>/dev/null")[1]
+      if ab then
+        local behind, ahead = ab:match("^(%d+)%s+(%d+)$")
+        if behind and ahead then
+          local parts = {}
+          if tonumber(ahead) > 0 then table.insert(parts, "↑" .. ahead) end
+          if tonumber(behind) > 0 then table.insert(parts, "↓" .. behind) end
+          if #parts > 0 then footer = " " .. table.concat(parts, " ") .. " " end
+        end
+      end
+    end
+  end
+  pcall(vim.api.nvim_win_set_config, state.winid, { title = title, footer = footer })
 end
 
 local function git_pull()
