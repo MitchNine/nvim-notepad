@@ -110,9 +110,28 @@ local function render(dir)
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
   vim.bo[buf].modifiable = false
   pcall(vim.api.nvim_buf_set_name, buf, "notepad://" .. dir)
-  pcall(vim.api.nvim_win_set_config, state.winid, { title = " " .. dir .. " " })
   pcall(vim.api.nvim_win_set_cursor, state.winid, { 1, 0 })
   apply_list_highlights(buf, entries)
+
+  local title = " " .. dir .. " "
+  local footer = ""
+  if is_git_repo(dir) then
+    local branch = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --abbrev-ref HEAD 2>/dev/null")[1]
+    if branch and branch ~= "" then
+      title = " " .. dir .. " (" .. branch .. ") "
+      local ab = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-list --count --left-right @{upstream}...HEAD 2>/dev/null")[1]
+      if ab then
+        local behind, ahead = ab:match("^(%d+)%s+(%d+)$")
+        if behind and ahead then
+          local parts = {}
+          if tonumber(ahead) > 0 then table.insert(parts, "↑" .. ahead) end
+          if tonumber(behind) > 0 then table.insert(parts, "↓" .. behind) end
+          if #parts > 0 then footer = " " .. table.concat(parts, " ") .. " " end
+        end
+      end
+    end
+  end
+  pcall(vim.api.nvim_win_set_config, state.winid, { title = title, footer = footer })
 end
 
 -- Uses state.entries (populated by render) so no disk read is needed.
